@@ -1,36 +1,42 @@
 apiVersion: tekton.dev/v1beta1
-kind: Pipeline
-metadata:  
-  name: juphc-tc-pipeline
+kind: Task
+metadata:
+  name: npm
 spec:
   workspaces:
-    - name: pipeline-workspace
-    - name: dockerconfig-ws
-  params:
-    - name: build-image
-    - name: repo-url
-    - name: branch
-      default: main
-  tasks:
-  
-    - name: init
-      workspaces:
-        - name: source
-          workspace: pipeline-workspace          
-      taskRef:
-        name: cleanup
-        
-    - name: clone
-      workspaces:
-        - name: output
-          workspace: pipeline-workspace          
-      taskRef:
-        name: git-clone
-        kind: ClusterTask
-      params:
-      - name: url
-        value: $(params.repo-url)
-      - name: revision
-        value: $(params.branch)
-      runAfter:
-        - init
+    - name: source
+  steps:
+    - name: npminstall
+      image: node:20-buster-slim
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/bash
+        set -e
+
+        echo "***** Environment *****"
+        npm --version
+        pwd
+
+        echo "***** Cleaning npm cache *****"
+        npm cache clean --force
+
+        echo "***** Running npm install *****"
+        npm install
+
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: jasmine
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: jasminetests
+      image: node:20-buster-slim
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/bash
+        set -e
+
+        echo "***** Running jasminetests *****"
+        npx jasmine
